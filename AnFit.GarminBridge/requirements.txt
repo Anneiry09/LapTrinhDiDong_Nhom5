@@ -1,0 +1,8 @@
+fastapi==0.115.0
+uvicorn==0.30.0
+garminconnect==0.2.25
+python-dotenv==1.1.0
+scikit-learn==1.6.1
+pandas==2.2.3
+joblib==1.4.2
+google-genai>=2.6.0

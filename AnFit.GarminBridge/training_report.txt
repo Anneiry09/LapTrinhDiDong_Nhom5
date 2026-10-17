@@ -1,0 +1,28 @@
+========================================================
+         BÁO CÁO KẾT QUẢ HUẤN LUYỆN MÔ HÌNH AI ANFIT
+========================================================
+
+Mô hình sử dụng: Random Forest Regressor (100 n_estimators, 10 max_depth)
+Kích thước bộ dữ liệu (Dataset size): 5000 mẫu
+Phân chia tập dữ liệu: 80% Huấn luyện (Train), 20% Kiểm thử (Test)
+Đường dẫn file dataset: exercise_suitability_dataset.csv
+
+CHỈ SỐ ĐÁNH GIÁ ĐỘ CHÍNH XÁC:
+--------------------------------------------------------
+1. Mean Squared Error (MSE): 0.298121
+2. Root Mean Squared Error (RMSE): 0.546005 (điểm lệch trên thang 10)
+3. Mean Absolute Error (MAE): 0.432783 (sai số tuyệt đối trung bình)
+4. R-squared (R2 Score): 0.863492 (Mô hình giải thích được 86.35% phương sai dữ liệu)
+5. Độ chính xác tương đối (Accuracy): 95.67% (Tính trên thang điểm 10)
+
+ĐẶC TRƯNG ĐẦU VÀO (FEATURES) VÀ Ý NGHĨA:
+- User_Age: Tuổi người dùng (16 - 65)
+- User_BMI: Chỉ số khối cơ thể (18.0 - 35.0)
+- Is_Male: Giới tính (1: Nam, 0: Nữ)
+- Target_Goal: Mục tiêu (1: Giảm cân, 2: Duy trì, 3: Tăng cơ)
+- Fitness_Level: Thể lực (1: Mới tập, 2: Trung bình, 3: Nâng cao)
+- Exercise_Type: Loại bài tập (1: Bodyweight, 2: Cardio, 3: Tạ đơn, 4: Máy tập, 5: Yoga)
+- Exercise_BaseCalories: Calo đốt cháy cơ bản (10 - 150 kcal)
+NHÃN ĐẦU RA (LABEL):
+- Suitability_Score: Điểm phù hợp bài tập với người dùng (0.0 - 10.0)
+========================================================

@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36603.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnFit.Api", "AnFit.Api\AnFit.Api.csproj", "{96B6FE60-2F8E-46B9-83EA-8190593E5AD1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{96B6FE60-2F8E-46B9-83EA-8190593E5AD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96B6FE60-2F8E-46B9-83EA-8190593E5AD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96B6FE60-2F8E-46B9-83EA-8190593E5AD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96B6FE60-2F8E-46B9-83EA-8190593E5AD1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A370F728-8627-4636-A7E0-E71FDA2ADFA0}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,112 @@
+# ========================================================
+# 🔒 SENSITIVE & SECURITY FILES (BẢO MẬT & DỮ LIỆU NHẠY CẢM)
+# ========================================================
+# Environment & Secret files (Gemini API keys, credentials)
+.env
+.env.*
+*.env
+!.env.example
+
+# ASP.NET Core local settings with real SMTP / DB credentials
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+appsettings.*.json
+!appsettings.json
+!appsettings.example.json
+
+# Garmin OAuth tokens and session files
+garmin_tokens/
+oauth*.json
+*.tokens
+
+# Android / Mobile Keystores & Signing credentials
+*.keystore
+*.jks
+key.properties
+local.properties
+
+# Firebase / Cloud sensitive config files (if added in future)
+google-services.json
+GoogleService-Info.plist
+client_secret*.json
+
+# SSL / TLS Keys & Certificates
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*.crt
+
+# Local Database & SQLite files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Log files & diagnostics
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.dmp
+*.crash
+
+# ========================================================
+# 📦 .NET / C# BUILD ARTIFACTS
+# ========================================================
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+TestResults/
+*.suo
+publish/
+
+# ========================================================
+# 📱 FLUTTER & DART BUILD ARTIFACTS
+# ========================================================
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+windows/flutter/ephemeral/
+linux/flutter/ephemeral/
+android/.gradle/
+android/app/build/
+ios/.symlinks/
+ios/Pods/
+
+# ========================================================
+# 🐍 PYTHON BUILD & CACHE
+# ========================================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+dist/
+
+# ========================================================
+# 💻 IDE & OPERATING SYSTEM JUNK
+# ========================================================
+.vscode/
+.idea/
+*.swp
+*~
+Thumbs.db
+desktop.ini
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
