@@ -139,7 +139,9 @@ class _LiveWorkoutScreenState extends ConsumerState<LiveWorkoutScreen> with Tick
     try {
       await ref.read(bleHeartRateServiceProvider).startScan();
     } catch (e) {
-      AnFitToast.show(context, e.toString(), isError: true);
+      if (mounted) {
+        AnFitToast.show(context, e.toString(), isError: true);
+      }
     }
   }
 

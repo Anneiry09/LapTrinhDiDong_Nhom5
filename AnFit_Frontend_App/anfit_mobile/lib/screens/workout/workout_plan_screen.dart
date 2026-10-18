@@ -606,7 +606,7 @@ class _WorkoutPlanScreenState extends ConsumerState<WorkoutPlanScreen>
                               setState(() {}); // Đồng bộ màn hình chính
                               try {
                                 await ref.read(workoutServiceProvider).rate(planId, rating: starValue);
-                                if (mounted) {
+                                if (ctx.mounted) {
                                   if (starValue <= 3) {
                                     AnFitToast.show(
                                       ctx,
@@ -620,11 +620,11 @@ class _WorkoutPlanScreenState extends ConsumerState<WorkoutPlanScreen>
                                   }
                                 }
                               } on DioException catch (e) {
-                                if (mounted) {
+                                if (ctx.mounted) {
                                   AnFitToast.show(ctx, ApiClient.errorMessage(e), isError: true);
                                 }
                               } catch (e) {
-                                if (mounted) {
+                                if (ctx.mounted) {
                                   AnFitToast.show(ctx, 'Lỗi gửi đánh giá, vui lòng thử lại.', isError: true);
                                 }
                               }
