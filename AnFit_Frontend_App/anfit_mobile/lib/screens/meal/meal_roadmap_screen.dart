@@ -23,6 +23,7 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
   bool _loading = true;
   bool _generating = false;
   String? _error;
+  Map<String, dynamic>? _planData;
   List<Map<String, dynamic>> _details = [];
 
   static const _mealTitles = {
@@ -63,6 +64,7 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
       final data = await svc.getTodayPlan(date: _dateParam);
       if (mounted) {
         setState(() {
+          _planData = data;
           _details = (data?['mealPlanDetails'] as List?)?.cast<Map<String, dynamic>>() ?? [];
           _loading = false;
         });
@@ -112,17 +114,23 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
     }
   }
 
-  // 5. Đánh dấu đã ăn / chưa ăn
+  // 5. Đánh dấu đã ăn / chưa ăn (Track)
   Future<void> _toggleEaten(Map<String, dynamic> item) async {
-    final detailId = item['id'] as int;
-    final currentStatus = item['isEaten'] as bool? ?? false;
-    setState(() => item['isEaten'] = !currentStatus);
+    final detailId = item['id'] as int? ?? 0;
+    final currentStatus = (item['isTracked'] as bool?) ?? (item['isEaten'] as bool?) ?? false;
+    setState(() {
+      item['isTracked'] = !currentStatus;
+      item['isEaten'] = !currentStatus;
+    });
 
     try {
       await ref.read(nutritionServiceProvider).trackMeal(detailId);
     } catch (_) {
       if (mounted) {
-        setState(() => item['isEaten'] = currentStatus);
+        setState(() {
+          item['isTracked'] = currentStatus;
+          item['isEaten'] = currentStatus;
+        });
         AnFitToast.show(context, 'Lỗi cập nhật trạng thái bữa ăn.', isError: true);
       }
     }
@@ -224,18 +232,19 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Tính tổng macros trong ngày
-    int totalCal = 0;
-    double totalCarbs = 0;
-    double totalProtein = 0;
-    double totalFat = 0;
+    // Tính tổng macros trong ngày (ưu tiên lấy từ _planData, fallback cộng dồn từ _details)
+    int totalCal = (_planData?['totalCalories'] as num?)?.round() ?? 0;
+    double totalCarbs = (_planData?['totalCarbs'] as num?)?.toDouble() ?? 0.0;
+    double totalProtein = (_planData?['totalProtein'] as num?)?.toDouble() ?? 0.0;
+    double totalFat = (_planData?['totalFat'] as num?)?.toDouble() ?? 0.0;
 
-    for (final d in _details) {
-      totalCal += ((d['calculatedCalories'] as num?) ?? 0).round();
-      final food = d['foodItem'] as Map<String, dynamic>? ?? {};
-      totalCarbs += (food['carbs'] as num?)?.toDouble() ?? 0.0;
-      totalProtein += (food['protein'] as num?)?.toDouble() ?? 0.0;
-      totalFat += (food['fat'] as num?)?.toDouble() ?? 0.0;
+    if (totalCal == 0 && _details.isNotEmpty) {
+      for (final d in _details) {
+        totalCal += ((d['calculatedCalories'] as num?) ?? 0).round();
+        totalCarbs += ((d['calculatedCarbs'] as num?) ?? 0).toDouble();
+        totalProtein += ((d['calculatedProtein'] as num?) ?? 0).toDouble();
+        totalFat += ((d['calculatedFat'] as num?) ?? 0).toDouble();
+      }
     }
 
     return Scaffold(
@@ -409,12 +418,27 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
                     child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                   ),
                   ...items.map((item) {
-                    final food = item['foodItem'] as Map<String, dynamic>? ?? {};
-                    final name = food['name'] ?? 'Món ăn';
-                    final cal = ((item['calculatedCalories'] as num?) ?? 0).round();
-                    final isEaten = item['isEaten'] as bool? ?? false;
-                    final detailId = item['id'] as int;
-                    final recipeId = food['recipeId'] as int?;
+                    final food = item['foodItem'] as Map<String, dynamic>?;
+                    final String name = (item['recipeName'] as String?)?.trim().isNotEmpty == true
+                        ? (item['recipeName'] as String).trim()
+                        : (food?['name'] as String?)?.trim().isNotEmpty == true
+                            ? (food!['name'] as String).trim()
+                            : (item['name'] as String?)?.trim().isNotEmpty == true
+                                ? (item['name'] as String).trim()
+                                : 'Món ăn dinh dưỡng';
+
+                    final int recipeId = (item['recipeId'] as int?) 
+                        ?? (food?['recipeId'] as int?) 
+                        ?? (food?['id'] as int?) 
+                        ?? (item['id'] as int? ?? 0);
+
+                    final int cal = ((item['calculatedCalories'] as num?) ?? (food?['caloriesPerUnit'] as num?) ?? 0).round();
+                    final double protein = ((item['calculatedProtein'] as num?) ?? (food?['proteinPerUnit'] as num?) ?? 0).toDouble();
+                    final double carbs = ((item['calculatedCarbs'] as num?) ?? (food?['carbsPerUnit'] as num?) ?? 0).toDouble();
+                    final double fat = ((item['calculatedFat'] as num?) ?? (food?['fatPerUnit'] as num?) ?? 0).toDouble();
+
+                    final bool isEaten = (item['isTracked'] as bool?) ?? (item['isEaten'] as bool?) ?? false;
+                    final int detailId = item['id'] as int? ?? 0;
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
@@ -427,16 +451,19 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
                       ),
                       child: ListTile(
                         onTap: () {
-                          if (recipeId != null) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => RecipeDetailScreen(recipeId: recipeId, recipeName: name),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => RecipeDetailScreen(
+                                recipeId: recipeId,
+                                recipeName: name,
+                                calories: cal,
+                                protein: protein,
+                                carbs: carbs,
+                                fat: fat,
                               ),
-                            );
-                          } else {
-                            AnFitToast.show(context, 'Món này không có công thức nấu ăn.');
-                          }
+                            ),
+                          );
                         },
                         leading: Checkbox(
                           value: isEaten,
@@ -451,9 +478,28 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
                             decoration: isEaten ? TextDecoration.lineThrough : null,
                           ),
                         ),
-                        subtitle: Text(
-                          '$cal kcal  ${recipeId != null ? "• 👨‍🍳 Cách nấu (AI)" : ""}',
-                          style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black54),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$cal kcal • Đạm: ${protein.toStringAsFixed(0)}g • Carbs: ${carbs.toStringAsFixed(0)}g • Béo: ${fat.toStringAsFixed(0)}g',
+                                style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black54),
+                              ),
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  Icon(Icons.auto_awesome, size: 13, color: cs.primary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Chạm để xem AI hướng dẫn nấu',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: cs.primary),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                         trailing: IconButton(
                           tooltip: 'Đổi món khác',
