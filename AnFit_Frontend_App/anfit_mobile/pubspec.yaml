@@ -67,6 +67,7 @@ dependencies:
 
   # YouTube Player Integration for exercise video guides
   youtube_player_flutter: ^9.0.1
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:

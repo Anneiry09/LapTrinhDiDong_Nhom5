@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/service_providers.dart';
 import '../../services/api_client.dart';
@@ -101,20 +103,35 @@ class _WorkoutPlanScreenState extends ConsumerState<WorkoutPlanScreen> {
   }
 
   void _showVideoDialog(BuildContext context, String name, String? videoUrl) {
+    final finalUrl = (videoUrl != null && videoUrl.isNotEmpty)
+        ? videoUrl
+        : 'https://www.youtube.com/watch?v=iodQ8pvhb_U';
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
         content: SizedBox(
           width: double.maxFinite,
           child: WorkoutVideoPlayer(
-            videoUrl: (videoUrl != null && videoUrl.isNotEmpty)
-                ? videoUrl
-                : 'https://www.youtube.com/watch?v=iodQ8pvhb_U',
+            videoUrl: finalUrl,
             height: 220,
           ),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () async {
+              final vId = YoutubePlayer.convertUrlToId(finalUrl);
+              final launchTarget = vId != null
+                  ? 'https://www.youtube.com/watch?v=$vId'
+                  : finalUrl;
+              try {
+                await launchUrl(Uri.parse(launchTarget), mode: LaunchMode.externalApplication);
+              } catch (_) {}
+            },
+            icon: const Icon(Icons.smart_display_rounded, color: Colors.red, size: 18),
+            label: const Text('Mở YouTube', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Đóng'),
