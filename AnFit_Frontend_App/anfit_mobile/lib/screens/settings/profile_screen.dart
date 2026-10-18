@@ -19,14 +19,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   late TextEditingController _nameCtrl;
   late TextEditingController _heightCtrl;
-  late TextEditingController _budgetCtrl;
 
   @override
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController();
     _heightCtrl = TextEditingController();
-    _budgetCtrl = TextEditingController();
     _load();
   }
 
@@ -34,7 +32,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _heightCtrl.dispose();
-    _budgetCtrl.dispose();
     super.dispose();
   }
 
@@ -46,7 +43,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _profile = p;
           _nameCtrl.text = p['fullName'] ?? '';
           _heightCtrl.text = '${p['heightCm'] ?? ''}';
-          _budgetCtrl.text = '${(p['dailyBudget'] ?? 80000.0).toDouble().toStringAsFixed(0)}';
           _loading = false;
         });
       }
@@ -61,7 +57,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       await ref.read(userServiceProvider).updateProfile({
         'fullName': _nameCtrl.text.trim(),
         'heightCm': double.tryParse(_heightCtrl.text) ?? 170,
-        'dailyBudget': double.tryParse(_budgetCtrl.text) ?? 80000,
+        if (_profile?['dailyBudget'] != null) 'dailyBudget': _profile!['dailyBudget'],
       });
       if (mounted) {
         AnFitToast.show(context, 'Đã cập nhật hồ sơ thành công!');
@@ -86,26 +82,58 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(20), children: [
               // Avatar
-              Center(child: CircleAvatar(radius: 48, backgroundColor: cs.primary.withValues(alpha: 0.1), child: Icon(Icons.person, size: 48, color: cs.primary))),
+              Center(
+                child: CircleAvatar(
+                  radius: 48,
+                  backgroundColor: cs.primary.withValues(alpha: 0.1),
+                  child: Icon(Icons.person, size: 48, color: cs.primary),
+                ),
+              ),
               const SizedBox(height: 24),
               // Name
-              TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Họ và tên', prefixIcon: Icon(Icons.person_outline))),
+              TextField(
+                controller: _nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Họ và tên',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+              ),
               const SizedBox(height: 16),
               // Email (read-only)
-              TextField(readOnly: true, decoration: InputDecoration(labelText: 'Email', prefixIcon: const Icon(Icons.email_outlined), hintText: _profile?['email'] ?? '')),
+              TextField(
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  hintText: _profile?['email'] ?? '',
+                ),
+              ),
               const SizedBox(height: 16),
               // Height
-              TextField(controller: _heightCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Chiều cao (cm)', prefixIcon: Icon(Icons.height))),
-              const SizedBox(height: 16),
-              // Daily Budget
-              TextField(controller: _budgetCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ngân sách ăn uống ngày (đ)', prefixIcon: Icon(Icons.payments_outlined))),
+              TextField(
+                controller: _heightCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Chiều cao (cm)',
+                  prefixIcon: Icon(Icons.height),
+                ),
+              ),
               const SizedBox(height: 16),
               // Gender (read-only)
-              _infoTile('Giới tính', _profile?['gender'] == 1 ? 'Nam' : (_profile?['gender'] == 2 ? 'Nữ' : 'Chưa xác định'), Icons.wc),
+              _infoTile(
+                'Giới tính',
+                _profile?['gender'] == 1 ? 'Nam' : (_profile?['gender'] == 2 ? 'Nữ' : 'Chưa xác định'),
+                Icons.wc,
+              ),
               _infoTile('Ngày sinh', _formatDob(_profile?['dateOfBirth']), Icons.cake),
               _infoTile('Mục tiêu', _goalLabel(_profile?['targetGoal']), Icons.flag),
               const SizedBox(height: 32),
-              ElevatedButton(onPressed: _saving ? null : _save, child: _saving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Lưu thay đổi')),
+              ElevatedButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Lưu thay đổi'),
+              ),
             ]),
     );
   }
