@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
@@ -14,7 +13,7 @@ import '../settings/settings_screen.dart';
 import '../auth/entry_screen.dart';
 
 /// ═══════════════════════════════════════════════════════════
-/// DashboardScreen — Shell chính với Bottom Navigation Bar 4 Tabs
+/// DashboardScreen — Shell chính với Bottom Navigation Bar 4 Tabs chuẩn Flutter
 /// ═══════════════════════════════════════════════════════════
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -43,102 +42,43 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: screens),
-      extendBody: true,
-      bottomNavigationBar: _PremiumNavBar(
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        isDark: isDark,
         onTap: _switchTab,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
+        unselectedItemColor: isDark ? AppColors.darkTextSub : AppColors.lightTextSub,
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        elevation: 8,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home_rounded),
+            label: 'Trang chủ',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.restaurant_outlined),
+            activeIcon: Icon(Icons.restaurant_rounded),
+            label: 'Dinh dưỡng',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center_outlined),
+            activeIcon: Icon(Icons.fitness_center_rounded),
+            label: 'Tập luyện',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            activeIcon: Icon(Icons.settings_rounded),
+            label: 'Cài đặt',
+          ),
+        ],
       ),
     );
   }
 }
 
-// ─── Bottom Navigation Bar ────────────────────────────────────────────────────
-class _PremiumNavBar extends StatelessWidget {
-  final int currentIndex;
-  final bool isDark;
-  final ValueChanged<int> onTap;
-
-  const _PremiumNavBar({
-    required this.currentIndex,
-    required this.isDark,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = isDark ? AppColors.darkSurface : AppColors.lightSurface;
-    const items = [
-      (Icons.home_rounded, Icons.home_outlined, 'Trang chủ'),
-      (Icons.restaurant_rounded, Icons.restaurant_outlined, 'Dinh dưỡng'),
-      (Icons.fitness_center_rounded, Icons.fitness_center_outlined, 'Tập luyện'),
-      (Icons.settings_rounded, Icons.settings_outlined, 'Cài đặt'),
-    ];
-
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.only(bottom: 6),
-          decoration: BoxDecoration(
-            color: bg.withValues(alpha: 0.90),
-            border: Border(
-              top: BorderSide(
-                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
-                width: 0.8,
-              ),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Row(
-              children: List.generate(items.length, (i) {
-                final selected = currentIndex == i;
-                final color = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
-                final mutedColor = isDark ? AppColors.darkTextSub : AppColors.lightTextSub;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => onTap(i),
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: selected ? color.withValues(alpha: 0.15) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              selected ? items[i].$1 : items[i].$2,
-                              color: selected ? color : mutedColor,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            items[i].$3,
-                            style: GoogleFonts.inter(
-                              fontSize: 10.5,
-                              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                              color: selected ? color : mutedColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ═══════════════════════════════════════════════════════════
 // TAB TRANG CHỦ — Tinh gọn, rõ ràng, dễ bảo vệ đồ án
@@ -304,7 +244,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
           color: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
