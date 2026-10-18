@@ -103,9 +103,32 @@ class _WorkoutPlanScreenState extends ConsumerState<WorkoutPlanScreen> {
   }
 
   void _showVideoDialog(BuildContext context, String name, String? videoUrl) {
-    final finalUrl = (videoUrl != null && videoUrl.isNotEmpty)
-        ? videoUrl
-        : 'https://www.youtube.com/watch?v=iodQ8pvhb_U';
+    if (videoUrl == null || videoUrl.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          content: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.video_library_outlined, size: 48, color: Colors.grey),
+                SizedBox(height: 12),
+                Text('Động tác này chưa có video hướng dẫn.', textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
 
     showDialog(
       context: context,
@@ -114,17 +137,17 @@ class _WorkoutPlanScreenState extends ConsumerState<WorkoutPlanScreen> {
         content: SizedBox(
           width: double.maxFinite,
           child: WorkoutVideoPlayer(
-            videoUrl: finalUrl,
+            videoUrl: videoUrl,
             height: 220,
           ),
         ),
         actions: [
           TextButton.icon(
             onPressed: () async {
-              final vId = YoutubePlayer.convertUrlToId(finalUrl);
+              final vId = YoutubePlayer.convertUrlToId(videoUrl);
               final launchTarget = vId != null
                   ? 'https://www.youtube.com/watch?v=$vId'
-                  : finalUrl;
+                  : videoUrl;
               try {
                 await launchUrl(Uri.parse(launchTarget), mode: LaunchMode.externalApplication);
               } catch (_) {}
@@ -389,7 +412,7 @@ class _WorkoutPlanScreenState extends ConsumerState<WorkoutPlanScreen> {
             final muscle = ex['muscleGroup'] ?? 'Toàn thân';
             final sets = a['sets'] ?? 3;
             final reps = a['repsPerSet'] ?? 12;
-            final videoUrl = ex['videoUrl'] as String?;
+            final videoUrl = (ex['instructionUrl'] ?? ex['videoUrl']) as String?;
 
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
