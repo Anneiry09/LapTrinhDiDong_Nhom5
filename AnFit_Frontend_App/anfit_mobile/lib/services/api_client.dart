@@ -12,6 +12,7 @@ class TokenKeys {
 class ApiClient {
   // Port khớp với launchSettings.json của backend (5108)
   // - Web / Windows desktop: http://localhost:5108/api/v1
+  // - Android thật (kết nối Wi-Fi cùng mạng): http://192.168.1.243:5108/api/v1
   // - Android thật (cắm cáp USB với adb reverse): http://127.0.0.1:5108/api/v1
   // - Android emulator: http://10.0.2.2:5108/api/v1
   static String get defaultBaseUrl {
@@ -22,7 +23,7 @@ class ApiClient {
       return 'http://localhost:5108/api/v1';
     }
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://127.0.0.1:5108/api/v1';
+      return 'http://192.168.1.243:5108/api/v1';
     }
     return 'http://localhost:5108/api/v1';
   }
@@ -55,24 +56,26 @@ class ApiClient {
 
   /// Auto-refresh khi nhận 401 & Auto-fallback endpoint nếu mất kết nối
   Future<void> _onError(DioException err, ErrorInterceptorHandler handler) async {
-    // 1. Tự động chuyển đổi endpoint dự phòng (USB adb reverse -> Emulator -> Wi-Fi LAN)
+    // 1. Tự động thử qua các endpoint dự phòng (Wi-Fi LAN -> USB cáp -> Emulator)
     if (err.type == DioExceptionType.connectionError || err.type == DioExceptionType.connectionTimeout) {
       final currentBase = dio.options.baseUrl;
-      String? nextBase;
-      if (currentBase.contains('127.0.0.1:5108')) {
-        nextBase = currentBase.replaceAll('127.0.0.1:5108', '10.0.2.2:5108');
-      } else if (currentBase.contains('10.0.2.2:5108')) {
-        nextBase = currentBase.replaceAll('10.0.2.2:5108', '192.168.1.243:5108');
-      }
+      final fallbackBases = [
+        'http://192.168.1.243:5108/api/v1',
+        'http://127.0.0.1:5108/api/v1',
+        'http://10.0.2.2:5108/api/v1',
+      ];
 
-      if (nextBase != null) {
-        dio.options.baseUrl = nextBase;
-        final opts = err.requestOptions;
-        opts.baseUrl = nextBase;
+      for (final nextBase in fallbackBases) {
+        if (nextBase == currentBase) continue;
         try {
+          dio.options.baseUrl = nextBase;
+          final opts = err.requestOptions;
+          opts.baseUrl = nextBase;
           final res = await dio.fetch(opts);
           return handler.resolve(res);
-        } catch (_) {}
+        } catch (_) {
+          // Thử tiếp endpoint tiếp theo trong danh sách
+        }
       }
     }
 
