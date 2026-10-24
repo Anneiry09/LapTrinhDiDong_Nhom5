@@ -11,20 +11,18 @@ class TokenKeys {
 /// Singleton API client — Dio + JWT interceptor + auto-refresh
 class ApiClient {
   // Port khớp với launchSettings.json của backend (5108)
-  // Windows desktop / Web: localhost:5108
-  // Android emulator: 10.0.2.2:5108 (tương đương localhost của máy chủ)
+  // - Web / Windows desktop: http://localhost:5108/api/v1
+  // - Android thật (cắm cáp USB với adb reverse): http://127.0.0.1:5108/api/v1
+  // - Android emulator: http://10.0.2.2:5108/api/v1
   static String get defaultBaseUrl {
-    // 1. Cho phép truyền URL tùy chỉnh khi build hoặc chạy qua --dart-define=API_URL=...
-    const envUrl = String.fromEnvironment('API_URL');
-    if (envUrl.isNotEmpty) {
-      return envUrl;
-    }
+    const fromEnv = String.fromEnvironment('API_BASE_URL');
+    if (fromEnv.isNotEmpty) return fromEnv;
 
     if (kIsWeb) {
       return 'http://localhost:5108/api/v1';
     }
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:5108/api/v1';
+      return 'http://127.0.0.1:5108/api/v1';
     }
     return 'http://localhost:5108/api/v1';
   }
@@ -55,8 +53,29 @@ class ApiClient {
     handler.next(options);
   }
 
-  /// Auto-refresh khi nhận 401
+  /// Auto-refresh khi nhận 401 & Auto-fallback endpoint nếu mất kết nối
   Future<void> _onError(DioException err, ErrorInterceptorHandler handler) async {
+    // 1. Tự động chuyển đổi endpoint dự phòng (USB adb reverse -> Emulator -> Wi-Fi LAN)
+    if (err.type == DioExceptionType.connectionError || err.type == DioExceptionType.connectionTimeout) {
+      final currentBase = dio.options.baseUrl;
+      String? nextBase;
+      if (currentBase.contains('127.0.0.1:5108')) {
+        nextBase = currentBase.replaceAll('127.0.0.1:5108', '10.0.2.2:5108');
+      } else if (currentBase.contains('10.0.2.2:5108')) {
+        nextBase = currentBase.replaceAll('10.0.2.2:5108', '192.168.1.243:5108');
+      }
+
+      if (nextBase != null) {
+        dio.options.baseUrl = nextBase;
+        final opts = err.requestOptions;
+        opts.baseUrl = nextBase;
+        try {
+          final res = await dio.fetch(opts);
+          return handler.resolve(res);
+        } catch (_) {}
+      }
+    }
+
     if (err.response?.statusCode == 401) {
       try {
         final refreshed = await _refreshToken();
