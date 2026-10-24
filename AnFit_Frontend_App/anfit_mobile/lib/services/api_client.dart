@@ -14,6 +14,12 @@ class ApiClient {
   // Windows desktop / Web: localhost:5108
   // Android emulator: 10.0.2.2:5108 (tương đương localhost của máy chủ)
   static String get defaultBaseUrl {
+    // 1. Cho phép truyền URL tùy chỉnh khi build hoặc chạy qua --dart-define=API_URL=...
+    const envUrl = String.fromEnvironment('API_URL');
+    if (envUrl.isNotEmpty) {
+      return envUrl;
+    }
+
     if (kIsWeb) {
       return 'http://localhost:5108/api/v1';
     }
