@@ -175,9 +175,6 @@ class _LiveWorkoutScreenState extends ConsumerState<LiveWorkoutScreen> with Tick
             _heartRateHistory.removeAt(0); // Giữ tối đa 50 điểm vẽ đồ thị
           }
           
-          // Tính calories mỗi giây dựa trên nhịp tim mới nhận được
-          _updateCalories(hr);
-          
           // Thay đổi tốc độ đập của vòng tròn nhịp tim tương thích với nhịp thực
           _updatePulseDuration(hr);
         });
@@ -249,6 +246,9 @@ class _LiveWorkoutScreenState extends ConsumerState<LiveWorkoutScreen> with Tick
     _workoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _secondsElapsed++;
+        if (_currentHeartRate > 0) {
+          _updateCalories(_currentHeartRate);
+        }
       });
     });
   }
