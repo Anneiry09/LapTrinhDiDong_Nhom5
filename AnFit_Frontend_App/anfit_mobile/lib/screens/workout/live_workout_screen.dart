@@ -48,6 +48,7 @@ class _LiveWorkoutScreenState extends ConsumerState<LiveWorkoutScreen> with Tick
   int _secondsElapsed = 0;
   List<int> _heartRateHistory = [];
   int _currentHeartRate = 0;
+  int _packetCount = 0;
   double _caloriesBurned = 0.0;
 
   // Thông số người dùng phục vụ tính Calories (Keytel Formula)
@@ -156,8 +157,15 @@ class _LiveWorkoutScreenState extends ConsumerState<LiveWorkoutScreen> with Tick
     try {
       final bleService = ref.read(bleHeartRateServiceProvider);
 
+      // Giải phóng subscription cũ nếu đang có để tránh bị duplicate luồng
+      await _connStateSub?.cancel();
+      _connStateSub = null;
+      await _hrSub?.cancel();
+      _hrSub = null;
+
       // 1. Đăng ký lắng nghe trạng thái kết nối thực tế TRƯỚC khi gọi kết nối để tránh mất event
       _connStateSub = bleService.connectionStateStream.listen((state) {
+        if (!mounted) return;
         setState(() {
           _connectionState = state;
         });
@@ -168,8 +176,10 @@ class _LiveWorkoutScreenState extends ConsumerState<LiveWorkoutScreen> with Tick
 
       // 2. Đăng ký nhận nhịp tim thời gian thực TRƯỚC
       _hrSub = bleService.heartRateStream.listen((hr) {
+        if (!mounted) return;
         setState(() {
           _currentHeartRate = hr;
+          _packetCount++;
           _heartRateHistory.add(hr);
           if (_heartRateHistory.length > 50) {
             _heartRateHistory.removeAt(0); // Giữ tối đa 50 điểm vẽ đồ thị
@@ -232,18 +242,18 @@ class _LiveWorkoutScreenState extends ConsumerState<LiveWorkoutScreen> with Tick
       cal = ((-20.4022 + (0.4472 * hr) - (0.1263 * _userWeight) + (0.0740 * _userAge)) / 4.184) * timeMinutes;
     }
 
-    setState(() {
-      _caloriesBurned += max(0.0, cal);
-    });
+    _caloriesBurned += max(0.0, cal);
   }
 
   /// Bắt đầu bấm giờ buổi tập
   void _startWorkout() {
     _workoutTimer?.cancel();
     _secondsElapsed = 0;
+    _packetCount = 0;
     _caloriesBurned = 0.0;
     _heartRateHistory = [];
     _workoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
       setState(() {
         _secondsElapsed++;
         if (_currentHeartRate > 0) {
@@ -843,14 +853,30 @@ class _LiveWorkoutScreenState extends ConsumerState<LiveWorkoutScreen> with Tick
                           color: Colors.white,
                         ),
                       ),
-                      Text(
-                        'BPM LIVE',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white.withValues(alpha: 0.7),
-                          letterSpacing: 1,
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: _packetCount > 0
+                                  ? (_packetCount % 2 == 0 ? Colors.greenAccent : Colors.white)
+                                  : Colors.white.withValues(alpha: 0.5),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            _packetCount > 0 ? 'LIVE #$_packetCount' : 'BPM LIVE',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white.withValues(alpha: 0.8),
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

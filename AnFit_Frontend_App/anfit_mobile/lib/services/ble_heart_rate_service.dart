@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
@@ -8,11 +7,10 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 /// ═══════════════════════════════════════════════════════════
 class BleHeartRateService {
   BluetoothDevice? _connectedDevice;
-  BluetoothCharacteristic? _hrChar;
   StreamSubscription<List<int>>? _hrValueSubscription;
   StreamSubscription<BluetoothConnectionState>? _connStateSubscription;
-  Timer? _watchdogTimer;
   DateTime? _lastPacketTime;
+  int _receivedPacketCount = 0;
 
   // StreamController phát nhịp tim thời gian thực
   final StreamController<int> _hrController = StreamController<int>.broadcast();
@@ -25,10 +23,14 @@ class BleHeartRateService {
 
   BluetoothDevice? get connectedDevice => _connectedDevice;
   DateTime? get lastPacketTime => _lastPacketTime;
+  int get receivedPacketCount => _receivedPacketCount;
 
   /// Bắt đầu quét tìm các thiết bị phát nhịp tim (Heart Rate service: 0x180D)
   Future<void> startScan() async {
     try {
+      // Bật verbose logging để theo dõi gói tin GATT chi tiết trong logcat
+      FlutterBluePlus.setLogLevel(LogLevel.verbose, color: true);
+
       // Đảm bảo Bluetooth đã bật
       final adapterState = await FlutterBluePlus.adapterState.first;
       if (adapterState != BluetoothAdapterState.on) {
@@ -63,6 +65,7 @@ class BleHeartRateService {
       await disconnectDevice();
 
       _connectedDevice = device;
+      _receivedPacketCount = 0;
 
       onProgress?.call('Đang đăng ký kênh trạng thái...');
       // Đăng ký lắng nghe thay đổi trạng thái kết nối
@@ -73,23 +76,13 @@ class BleHeartRateService {
         }
       });
 
-      onProgress?.call('Đang thực hiện kết nối BLE vật lý (tối đa 10s)...');
-      // Thực hiện kết nối với timeout 10 giây
-      await device.connect(autoConnect: false, timeout: const Duration(seconds: 10));
-
-      // Trên Android: yêu cầu kết nối tốc độ cao (High Priority) để OS không hạ xung nhịp BLE sau vài giây
-      if (!kIsWeb && Platform.isAndroid) {
-        try {
-          await device.requestConnectionPriority(connectionPriorityRequest: ConnectionPriority.high);
-        } catch (_) {}
-        try {
-          await device.requestMtu(512);
-        } catch (_) {}
-      }
+      onProgress?.call('Đang thực hiện kết nối BLE vật lý (tối đa 15s)...');
+      // Kết nối BLE với timeout 15 giây (dùng thông số mặc định của BLE để tương thích tốt với mọi đồng hồ)
+      await device.connect(autoConnect: false, timeout: const Duration(seconds: 15));
 
       onProgress?.call('Kết nối vật lý thành công! Đang đồng bộ GATT Services...');
-      // Khám phá dịch vụ (GATT Discovery) với timeout 10 giây
-      List<BluetoothService> services = await device.discoverServices().timeout(const Duration(seconds: 10));
+      // Khám phá dịch vụ (GATT Discovery) với timeout 15 giây
+      List<BluetoothService> services = await device.discoverServices().timeout(const Duration(seconds: 15));
 
       BluetoothCharacteristic? hrChar;
 
@@ -108,32 +101,31 @@ class BleHeartRateService {
       }
 
       if (hrChar == null) {
-        throw Exception('Thiết bị không hỗ trợ đặc tính Nhịp tim chuẩn BLE (0x2A37). Hãy thử tắt/bật lại Phát nhịp tim.');
+        throw Exception('Thiết bị không hỗ trợ đặc tính Nhịp tim chuẩn BLE (0x2A37). Hãy thử bật lại Phát nhịp tim.');
       }
 
-      _hrChar = hrChar;
-
       onProgress?.call('Đang đăng ký luồng nhận nhịp tim trực tiếp...');
-      // 1. Đăng ký nhận luồng onValueReceived trực tiếp (chuẩn xác hơn lastValueStream)
+      // 1. Đăng ký nhận luồng onValueReceived trực tiếp TRƯỚC KHI kích hoạt notify
       _hrValueSubscription = hrChar.onValueReceived.listen((value) {
         _lastPacketTime = DateTime.now();
+        _receivedPacketCount++;
         int hr = _parseHeartRate(value);
+        if (kDebugMode) {
+          print('[BLE-HR] Gói tin #$_receivedPacketCount | Raw: $value -> BPM: $hr (${DateTime.now().toIso8601String()})');
+        }
         if (hr > 0) {
           _hrController.add(hr);
         }
       });
 
-      // Gắn subscription vào vòng đời device
+      // Tự động giải phóng subscription khi device ngắt kết nối
       device.cancelWhenDisconnected(_hrValueSubscription!);
 
       onProgress?.call('Đang kích hoạt nhận thông báo Nhịp tim real-time...');
       // 2. Kích hoạt nhận thông báo (Notifications)
-      await hrChar.setNotifyValue(true).timeout(const Duration(seconds: 5));
+      await hrChar.setNotifyValue(true).timeout(const Duration(seconds: 8));
 
       _lastPacketTime = DateTime.now();
-
-      // 3. Khởi động Watchdog Timer kiểm tra nếu luồng dữ liệu bị tạm ngừng
-      _startWatchdog();
 
       onProgress?.call('Đăng ký luồng dữ liệu nhịp tim thành công!');
     } catch (e) {
@@ -141,26 +133,6 @@ class BleHeartRateService {
       await disconnectDevice();
       rethrow;
     }
-  }
-
-  /// Watchdog Timer định kỳ duy trì kết nối nếu đồng hồ ngừng phát gói tin > 4s
-  void _startWatchdog() {
-    _watchdogTimer?.cancel();
-    _watchdogTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
-      if (_connectedDevice == null || _hrChar == null) return;
-      if (!(_connectedDevice!.isConnected)) return;
-
-      final lastTime = _lastPacketTime;
-      if (lastTime != null && DateTime.now().difference(lastTime).inSeconds >= 4) {
-        // Nếu quá 4 giây chưa nhận gói tin mới: kích hoạt lại thông báo và xin lại priority
-        try {
-          if (!kIsWeb && Platform.isAndroid) {
-            await _connectedDevice?.requestConnectionPriority(connectionPriorityRequest: ConnectionPriority.high);
-          }
-          await _hrChar?.setNotifyValue(true);
-        } catch (_) {}
-      }
-    });
   }
 
   /// Ngắt kết nối thiết bị đang kết nối
@@ -176,15 +148,13 @@ class BleHeartRateService {
 
   /// Làm sạch các luồng lắng nghe khi ngắt kết nối
   void _cleanUpConnection() {
-    _watchdogTimer?.cancel();
-    _watchdogTimer = null;
     _hrValueSubscription?.cancel();
     _connStateSubscription?.cancel();
     _hrValueSubscription = null;
     _connStateSubscription = null;
     _connectedDevice = null;
-    _hrChar = null;
     _lastPacketTime = null;
+    _receivedPacketCount = 0;
     _connStateController.add(BluetoothConnectionState.disconnected);
   }
 
