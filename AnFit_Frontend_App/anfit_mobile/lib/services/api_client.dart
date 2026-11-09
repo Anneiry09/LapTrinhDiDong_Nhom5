@@ -23,7 +23,8 @@ class ApiClient {
       return 'http://localhost:5108/api/v1';
     }
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://192.168.1.243:5108/api/v1';
+      // Ưu tiên kết nối cáp USB qua adb reverse (tốc độ cao, không phụ thuộc mạng Wi-Fi)
+      return 'http://127.0.0.1:5108/api/v1';
     }
     return 'http://localhost:5108/api/v1';
   }
@@ -60,8 +61,8 @@ class ApiClient {
     if (err.type == DioExceptionType.connectionError || err.type == DioExceptionType.connectionTimeout) {
       final currentBase = dio.options.baseUrl;
       final fallbackBases = [
-        'http://192.168.1.243:5108/api/v1',
         'http://127.0.0.1:5108/api/v1',
+        'http://192.168.1.243:5108/api/v1',
         'http://10.0.2.2:5108/api/v1',
       ];
 
