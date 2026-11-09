@@ -289,7 +289,11 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
 
     // Calo món ăn
     final mealDetails = (todayMeal['mealPlanDetails'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final consumedCal = mealDetails.fold<int>(0, (sum, item) {
+    final plannedCal = mealDetails.fold<int>(0, (sum, item) {
+      return sum + ((item['calculatedCalories'] as num?) ?? 0).round();
+    });
+    final eatenItems = mealDetails.where((item) => (item['isTracked'] as bool?) == true || (item['isEaten'] as bool?) == true).toList();
+    final eatenCal = eatenItems.fold<int>(0, (sum, item) {
       return sum + ((item['calculatedCalories'] as num?) ?? 0).round();
     });
 
@@ -366,7 +370,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                   bmi: bmi,
                   goalName: targetGoalName,
                   tdee: tdee,
-                  consumedCal: consumedCal,
+                  consumedCal: eatenCal,
                 ),
                 const SizedBox(height: 20),
 
@@ -388,9 +392,13 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                   iconColor: AppColors.lightCoral,
                   title: 'Thực đơn dinh dưỡng',
                   subtitle: mealDetails.isNotEmpty
-                      ? '${mealDetails.length} bữa ăn được gợi ý cho hôm nay'
-                      : 'Xem lộ trình bữa ăn 30 ngày chuẩn calo',
-                  badge: '${consumedCal > 0 ? consumedCal : tdee} kcal',
+                      ? (eatenItems.isNotEmpty
+                          ? 'Đã ăn ${eatenItems.length}/${mealDetails.length} món • $eatenCal kcal'
+                          : '${mealDetails.length} bữa ăn được gợi ý cho hôm nay')
+                      : 'Xem lộ trình thực đơn 30 ngày chuẩn calo',
+                  badge: eatenItems.length == mealDetails.length && mealDetails.isNotEmpty
+                      ? '✓ Đã hoàn thành'
+                      : '$eatenCal / ${plannedCal > 0 ? plannedCal : tdee} kcal',
                   onTap: () => widget.onNavigateTab(1), // Chuyển sang Tab Dinh dưỡng
                 ),
                 const SizedBox(height: 12),
@@ -482,7 +490,9 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
               ),
               const Spacer(),
               Text(
-                'Mục tiêu Calo: $tdee kcal',
+                consumedCal > 0
+                    ? 'Đã nạp: $consumedCal / $tdee kcal'
+                    : 'Mục tiêu Calo: $tdee kcal',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

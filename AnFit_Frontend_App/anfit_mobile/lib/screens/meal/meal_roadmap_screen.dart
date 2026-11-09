@@ -247,6 +247,14 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
       }
     }
 
+    // ── TÍNH TOÁN TIẾN ĐỘ CALO ĐÃ NẠP THỰC TẾ ──
+    final eatenItems = _details.where((d) => (d['isTracked'] as bool?) == true || (d['isEaten'] as bool?) == true).toList();
+    final int eatenCal = eatenItems.fold<int>(0, (sum, d) => sum + ((d['calculatedCalories'] as num?) ?? 0).round());
+    final int targetCal = totalCal > 0 ? totalCal : 2000;
+    final double progress = (targetCal > 0) ? (eatenCal / targetCal).clamp(0.0, 1.0) : 0.0;
+    final int remainingCal = (targetCal - eatenCal).clamp(0, 9999);
+    final int percent = (progress * 100).round();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dinh Dưỡng'),
@@ -369,7 +377,7 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
               ),
             )
           else ...[
-            // ── THẺ TỔNG HỢP CALO & MACROS ──
+            // ── THẺ TIẾN ĐỘ CALO & MACROS ĐỘNG ──
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -379,15 +387,69 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Tổng Calo Nạp Vào', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                        Text('$totalCal kcal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: cs.primary)),
+                        const Text(
+                          'Tiến Độ Nạp Calo',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: (percent >= 100 ? Colors.green : cs.primary).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$percent% mục tiêu',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: percent >= 100 ? Colors.green : cs.primary,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
+
+                    // Thanh tiến độ mượt mà bằng TweenAnimationBuilder có sẵn của Flutter
+                    TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOutCubic,
+                      tween: Tween<double>(begin: 0, end: progress),
+                      builder: (context, val, _) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: val,
+                            minHeight: 10,
+                            backgroundColor: cs.outline.withValues(alpha: 0.12),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              val >= 1.0 ? Colors.green : cs.primary,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 3 Ô thống kê: Đã nạp • Mục tiêu • Còn lại
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildCalorieStat('Đã nạp', '$eatenCal kcal', Colors.green),
+                        _buildCalorieStat('Mục tiêu', '$targetCal kcal', cs.primary),
+                        _buildCalorieStat('Còn lại', '$remainingCal kcal', Colors.orange),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    const Divider(height: 1),
+                    const SizedBox(height: 10),
+
+                    // Dòng tổng hợp Macros
                     Row(
                       children: [
                         _buildMacroTag('Tinh bột', '${totalCarbs.toStringAsFixed(0)}g', Colors.orange),
@@ -409,13 +471,40 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
               if (items.isEmpty) return const SizedBox.shrink();
 
               final title = _mealTitles[mealType] ?? 'Bữa ăn';
+              final mealCal = items.fold<int>(0, (sum, d) => sum + ((d['calculatedCalories'] as num?) ?? 0).round());
+              final mealEatenCount = items.where((d) => (d['isTracked'] as bool?) == true || (d['isEaten'] as bool?) == true).length;
+              final isCompleted = mealEatenCount == items.length && items.isNotEmpty;
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isCompleted
+                                ? Colors.green.withValues(alpha: 0.12)
+                                : cs.outline.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isCompleted
+                                ? '✓ $mealCal kcal (Đã ăn)'
+                                : '$mealCal kcal • $mealEatenCount/${items.length} món',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: isCompleted ? Colors.green : cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   ...items.map((item) {
                     final food = item['foodItem'] as Map<String, dynamic>?;
@@ -516,6 +605,23 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildCalorieStat(String label, String value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          value,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: Colors.grey),
+        ),
+      ],
     );
   }
 

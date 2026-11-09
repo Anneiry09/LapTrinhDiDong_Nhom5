@@ -256,20 +256,76 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
           // ── HƯỚNG DẪN CÁC BƯỚC NẤU BỞI AI (CHECKBOX) ──
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('AI Hướng dẫn chế biến 👨‍🍳', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              if (_loadingSteps) ...[
-                const SizedBox(width: 10),
-                const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-              ],
+              Row(
+                children: [
+                  const Text('AI Hướng dẫn chế biến 👨‍🍳', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  if (_loadingSteps) ...[
+                    const SizedBox(width: 8),
+                    const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                  ],
+                ],
+              ),
+              if (_steps.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: (_checkedSteps.length == _steps.length ? Colors.green : cs.primary).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    _checkedSteps.length == _steps.length
+                        ? '✓ Xong ${_steps.length} bước'
+                        : '${_checkedSteps.length}/${_steps.length} bước',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: _checkedSteps.length == _steps.length ? Colors.green : cs.primary,
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 8),
 
           if (_steps.isEmpty && _loadingSteps)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: Text('Đang tạo hướng dẫn nấu ăn bằng AI...')),
+            Column(
+              children: List.generate(3, (i) {
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: cs.outline.withValues(alpha: 0.1)),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      radius: 12,
+                      backgroundColor: cs.primary.withValues(alpha: 0.1),
+                      child: Text('${i + 1}', style: TextStyle(fontSize: 11, color: cs.primary, fontWeight: FontWeight.bold)),
+                    ),
+                    title: Container(
+                      height: 12,
+                      width: 100,
+                      decoration: BoxDecoration(
+                        color: cs.outline.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Container(
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: cs.outline.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
             )
           else
             ...List.generate(_steps.length, (stepIdx) {
