@@ -11,7 +11,6 @@ import '../../services/api_client.dart';
 import '../workout/workout_plan_screen.dart';
 import '../meal/meal_roadmap_screen.dart';
 import '../settings/settings_screen.dart';
-import '../auth/entry_screen.dart';
 
 /// ═══════════════════════════════════════════════════════════
 /// DashboardScreen — Shell chính với Bottom Navigation Bar 4 Tabs
@@ -213,39 +212,6 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
     }
   }
 
-  Future<void> _confirmLogout(BuildContext context) async {
-    final cs = Theme.of(context).colorScheme;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Đăng xuất'),
-        content: const Text('Bạn có chắc chắn muốn đăng xuất tài khoản?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: cs.error, foregroundColor: Colors.white),
-            child: const Text('Đăng xuất'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true && context.mounted) {
-      await ref.read(authServiceProvider).logout();
-      if (context.mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const EntryScreen()),
-          (_) => false,
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -361,15 +327,6 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                         style: IconButton.styleFrom(
                           backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      tooltip: 'Đăng xuất',
-                      onPressed: () => _confirmLogout(context),
-                      icon: const Icon(Icons.logout_rounded, color: AppColors.error, size: 22),
-                      style: IconButton.styleFrom(
-                        backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
                       ),
                     ),
                   ],

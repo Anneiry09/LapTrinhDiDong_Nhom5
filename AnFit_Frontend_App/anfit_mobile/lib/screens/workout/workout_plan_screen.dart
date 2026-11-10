@@ -894,7 +894,9 @@ class _WorkoutPlanScreenState extends ConsumerState<WorkoutPlanScreen>
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -911,7 +913,6 @@ class _WorkoutPlanScreenState extends ConsumerState<WorkoutPlanScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
                       if (calories > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

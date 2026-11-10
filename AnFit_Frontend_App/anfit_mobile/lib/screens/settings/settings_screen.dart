@@ -43,13 +43,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cài Đặt'),
-        actions: [
-          IconButton(
-            tooltip: 'Đăng xuất',
-            icon: Icon(Icons.logout_rounded, color: cs.error),
-            onPressed: () => _logout(context),
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
