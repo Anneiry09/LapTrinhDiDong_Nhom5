@@ -433,7 +433,6 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
         children: [
           // Hàng mục tiêu & Phần trăm đạt được
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -453,12 +452,20 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                   ],
                 ),
               ),
-              Text(
-                'Đạt $calPercent% mục tiêu',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: calPercent >= 100 ? AppColors.success : (isDark ? AppColors.darkTextSub : AppColors.lightTextSub),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'Đạt $calPercent% mục tiêu',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: calPercent >= 100 ? AppColors.success : (isDark ? AppColors.darkTextSub : AppColors.lightTextSub),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -475,22 +482,28 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
             child: Column(
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.local_fire_department_rounded, size: 16, color: Colors.orange),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Calo đã nạp hôm nay',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? AppColors.darkText : AppColors.lightText,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.local_fire_department_rounded, size: 16, color: Colors.orange),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              'Calo đã nạp',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? AppColors.darkText : AppColors.lightText,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '$consumedCal / $tdee kcal',
                       style: GoogleFonts.outfit(
@@ -601,7 +614,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
               ),
               child: Icon(icon, color: iconColor, size: 22),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -613,14 +626,14 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                           title,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 14.5,
+                            fontSize: 14,
                             color: isDark ? AppColors.darkText : AppColors.lightText,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: (isDark ? AppColors.darkPrimary : AppColors.lightPrimary).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
