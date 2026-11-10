@@ -24,10 +24,15 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  final GlobalKey<_HomeTabState> _homeKey = GlobalKey<_HomeTabState>();
   int _currentIndex = 0;
 
   void _switchTab(int index) {
     setState(() => _currentIndex = index);
+    if (index == 0) {
+      // Tự động cập nhật số liệu Trang chủ khi quay lại từ các tab khác
+      _homeKey.currentState?.refreshSilent();
+    }
   }
 
   @override
@@ -35,8 +40,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final screens = [
-      _HomeTab(key: const ValueKey('tab_home'), onNavigateTab: _switchTab),
-      const MealRoadmapScreen(key: ValueKey('tab_meal')),
+      _HomeTab(key: _homeKey, onNavigateTab: _switchTab),
+      MealRoadmapScreen(
+        key: const ValueKey('tab_meal'),
+        onMealChanged: () => _homeKey.currentState?.refreshSilent(),
+      ),
       const WorkoutPlanScreen(key: ValueKey('tab_workout')),
       const SettingsScreen(key: ValueKey('tab_settings')),
     ];
@@ -163,11 +171,15 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> refreshSilent() => _loadData(silent: true);
+
+  Future<void> _loadData({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
     try {
       final userSvc = ref.read(userServiceProvider);
@@ -185,14 +197,14 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
         });
       }
     } on DioException catch (e) {
-      if (mounted) {
+      if (mounted && !silent) {
         setState(() {
           _loading = false;
           _error = ApiClient.errorMessage(e);
         });
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && !silent) {
         setState(() {
           _loading = false;
           _error = 'Không thể tải dữ liệu trang chủ.';
@@ -282,8 +294,6 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
         ? 'Giảm cân & Đốt mỡ'
         : (targetGoal == 2 ? 'Duy trì vóc dáng' : 'Tăng cơ & Săn chắc');
 
-    // Thể trạng & Calo
-    final tdee = (d['todayTdee'] as num?)?.round() ?? 2000;
     final todayMeal = d['todayMealPlan'] as Map<String, dynamic>? ?? {};
     final todayWorkout = d['todayWorkoutPlan'] as Map<String, dynamic>? ?? {};
 
@@ -296,6 +306,10 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
     final eatenCal = eatenItems.fold<int>(0, (sum, item) {
       return sum + ((item['calculatedCalories'] as num?) ?? 0).round();
     });
+
+    // Thể trạng & Calo (nếu todayTdee = 0 thì lấy theo tổng calo thực đơn hoặc mặc định 2000)
+    final rawTdee = (d['todayTdee'] as num?)?.round() ?? 0;
+    final tdee = rawTdee > 0 ? rawTdee : (plannedCal > 0 ? plannedCal : 2000);
 
     final hour = DateTime.now().hour;
     final greeting = hour < 12 ? '☀️ Chào buổi sáng' : (hour < 18 ? '🌤️ Chào buổi chiều' : '🌙 Chào buổi tối');
@@ -488,15 +502,22 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                   ],
                 ),
               ),
-              const Spacer(),
-              Text(
-                consumedCal > 0
-                    ? 'Đã nạp: $consumedCal / $tdee kcal'
-                    : 'Mục tiêu Calo: $tdee kcal',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.darkTextSub : AppColors.lightTextSub,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    consumedCal > 0
+                        ? 'Đã nạp: $consumedCal / $tdee kcal'
+                        : 'Mục tiêu: $tdee kcal',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.darkTextSub : AppColors.lightTextSub,
+                    ),
+                  ),
                 ),
               ),
             ],

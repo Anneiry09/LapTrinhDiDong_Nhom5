@@ -12,7 +12,8 @@ import '../../widgets/anfit_toast.dart';
 /// ═══════════════════════════════════════════════════════════
 class MealRoadmapScreen extends ConsumerStatefulWidget {
   final String? initialDate;
-  const MealRoadmapScreen({super.key, this.initialDate});
+  final VoidCallback? onMealChanged;
+  const MealRoadmapScreen({super.key, this.initialDate, this.onMealChanged});
 
   @override
   ConsumerState<MealRoadmapScreen> createState() => _MealRoadmapScreenState();
@@ -83,6 +84,7 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
       await ref.read(nutritionServiceProvider).generatePlan(planDate: _dateParam);
       if (mounted) AnFitToast.show(context, 'Đã tạo thực đơn ngày mới bằng AI thành công!');
       await _loadPlan();
+      widget.onMealChanged?.call();
     } on DioException catch (e) {
       if (mounted) AnFitToast.show(context, ApiClient.errorMessage(e), isError: true);
     } catch (_) {
@@ -114,7 +116,7 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
     }
   }
 
-  // 5. Đánh dấu đã ăn / chưa ăn (Track)
+  // 5. Đánh dấu đã ăn / chưa ăn (Track từng món)
   Future<void> _toggleEaten(Map<String, dynamic> item) async {
     final detailId = item['id'] as int? ?? 0;
     final currentStatus = (item['isTracked'] as bool?) ?? (item['isEaten'] as bool?) ?? false;
@@ -125,11 +127,52 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
 
     try {
       await ref.read(nutritionServiceProvider).trackMeal(detailId);
+      widget.onMealChanged?.call();
     } catch (_) {
       if (mounted) {
         setState(() {
           item['isTracked'] = currentStatus;
           item['isEaten'] = currentStatus;
+        });
+        AnFitToast.show(context, 'Lỗi cập nhật trạng thái bữa ăn.', isError: true);
+      }
+    }
+  }
+
+  // 5b. Hoàn thành (hoặc bỏ hoàn thành) cả bữa ăn chỉ với 1 nút bấm
+  Future<void> _completeMealGroup(List<Map<String, dynamic>> items, bool currentlyCompleted) async {
+    final targetState = !currentlyCompleted;
+    final toToggle = items.where((item) {
+      final status = (item['isTracked'] as bool?) ?? (item['isEaten'] as bool?) ?? false;
+      return status != targetState;
+    }).toList();
+
+    if (toToggle.isEmpty) return;
+
+    setState(() {
+      for (final item in toToggle) {
+        item['isTracked'] = targetState;
+        item['isEaten'] = targetState;
+      }
+    });
+
+    try {
+      final svc = ref.read(nutritionServiceProvider);
+      for (final item in toToggle) {
+        final detailId = item['id'] as int? ?? 0;
+        if (detailId > 0) await svc.trackMeal(detailId);
+      }
+      widget.onMealChanged?.call();
+      if (mounted && targetState) {
+        AnFitToast.show(context, 'Đã hoàn thành bữa ăn và đồng bộ về Trang chủ!');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          for (final item in toToggle) {
+            item['isTracked'] = !targetState;
+            item['isEaten'] = !targetState;
+          }
         });
         AnFitToast.show(context, 'Lỗi cập nhật trạng thái bữa ăn.', isError: true);
       }
@@ -201,13 +244,14 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
                             trailing: const Icon(Icons.check_circle_outline, color: Colors.blue),
                             onTap: () async {
                               Navigator.pop(ctx);
-                              try {
-                                await ref.read(nutritionServiceProvider).swapMealItem(detailId, rId);
-                                if (mounted) {
-                                  AnFitToast.show(this.context, 'Đã đổi món thành công!');
-                                  _loadPlan();
-                                }
-                              } on DioException catch (e) {
+                                try {
+                                  await ref.read(nutritionServiceProvider).swapMealItem(detailId, rId);
+                                  if (mounted) {
+                                    AnFitToast.show(this.context, 'Đã đổi món thành công!');
+                                    await _loadPlan();
+                                    widget.onMealChanged?.call();
+                                  }
+                                } on DioException catch (e) {
                                 if (mounted) AnFitToast.show(this.context, ApiClient.errorMessage(e), isError: true);
                               } catch (_) {
                                 if (mounted) AnFitToast.show(this.context, 'Lỗi đổi món, thử lại.', isError: true);
@@ -481,25 +525,34 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: isCompleted
-                                ? Colors.green.withValues(alpha: 0.12)
-                                : cs.outline.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
+                        Expanded(
                           child: Text(
-                            isCompleted
-                                ? '✓ $mealCal kcal (Đã ăn)'
-                                : '$mealCal kcal • $mealEatenCount/${items.length} món',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: isCompleted ? Colors.green : cs.onSurfaceVariant,
+                            '$title • $mealCal kcal',
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: () => _completeMealGroup(items, isCompleted),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? Colors.green
+                                  : cs.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isCompleted ? '✓ Đã xong bữa' : 'Hoàn thành bữa',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: isCompleted ? Colors.white : cs.primary,
+                              ),
                             ),
                           ),
                         ),
@@ -581,9 +634,13 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
                                 children: [
                                   Icon(Icons.auto_awesome, size: 13, color: cs.primary),
                                   const SizedBox(width: 4),
-                                  Text(
-                                    'Chạm để xem AI hướng dẫn nấu',
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: cs.primary),
+                                  Expanded(
+                                    child: Text(
+                                      'Chạm xem AI hướng dẫn nấu',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: cs.primary),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ],
                               ),

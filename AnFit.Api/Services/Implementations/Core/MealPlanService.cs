@@ -446,7 +446,7 @@ namespace AnFit.Api.Services.Implementations.Core
             var detail = await _unitOfWork.MealPlans.GetDetailByIdAsync(detailId);
             if (detail == null) throw new NotFoundException("Không tìm thấy chi tiết thực đơn.");
 
-            detail.IsTracked = true;
+            detail.IsTracked = !detail.IsTracked;
             await _unitOfWork.SaveChangesAsync();
         }
     }

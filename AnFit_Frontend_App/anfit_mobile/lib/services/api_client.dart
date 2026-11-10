@@ -57,22 +57,33 @@ class ApiClient {
 
   /// Auto-refresh khi nhận 401 & Auto-fallback endpoint nếu mất kết nối
   Future<void> _onError(DioException err, ErrorInterceptorHandler handler) async {
-    // 1. Tự động thử qua các endpoint dự phòng (Wi-Fi LAN -> USB cáp -> Emulator)
-    if (err.type == DioExceptionType.connectionError || err.type == DioExceptionType.connectionTimeout) {
+    // 1. Tự động thử qua các endpoint dự phòng (chặn lặp đệ quy bằng cờ _retried)
+    if ((err.type == DioExceptionType.connectionError || err.type == DioExceptionType.connectionTimeout) &&
+        err.requestOptions.extra['_retried'] != true) {
       final currentBase = dio.options.baseUrl;
       final fallbackBases = [
         'http://127.0.0.1:5108/api/v1',
+        'http://192.168.1.58:5108/api/v1',
         'http://192.168.1.243:5108/api/v1',
         'http://10.0.2.2:5108/api/v1',
       ];
 
+      // Dùng Dio phụ với timeout ngắn để tránh gọi lại chính _onError này
+      final probeDio = Dio(BaseOptions(
+        connectTimeout: const Duration(milliseconds: 2500),
+        receiveTimeout: dio.options.receiveTimeout,
+        headers: err.requestOptions.headers,
+      ));
+
       for (final nextBase in fallbackBases) {
         if (nextBase == currentBase) continue;
         try {
+          final opts = err.requestOptions.copyWith(
+            baseUrl: nextBase,
+            extra: {...err.requestOptions.extra, '_retried': true},
+          );
+          final res = await probeDio.fetch(opts);
           dio.options.baseUrl = nextBase;
-          final opts = err.requestOptions;
-          opts.baseUrl = nextBase;
-          final res = await dio.fetch(opts);
           return handler.resolve(res);
         } catch (_) {
           // Thử tiếp endpoint tiếp theo trong danh sách
