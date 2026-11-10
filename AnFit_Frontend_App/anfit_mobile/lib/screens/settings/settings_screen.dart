@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../core/theme/theme_provider.dart';
 import '../../providers/service_providers.dart';
 import '../../services/api_client.dart';
 import '../../screens/auth/entry_screen.dart';
@@ -36,7 +35,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
     final name = _profile?['fullName'] ?? 'AnFit User';
     final email = _profile?['email'] ?? '';
 
@@ -69,10 +67,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Theme Toggle
-          _settingsTile(context, icon: isDark ? Icons.dark_mode : Icons.light_mode, title: 'Giao diện ${isDark ? "Tối" : "Sáng"}',
-            trailing: Switch(value: isDark, onChanged: (_) => ref.read(themeModeProvider.notifier).toggleTheme(), activeColor: cs.primary)),
 
           // Bù calo tập luyện
           _settingsTile(context, icon: Icons.local_fire_department_outlined, title: 'Cộng calo tập luyện vào mục tiêu',

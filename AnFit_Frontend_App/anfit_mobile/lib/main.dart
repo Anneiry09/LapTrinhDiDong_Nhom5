@@ -3,7 +3,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
-import 'core/theme/theme_provider.dart';
 import 'providers/service_providers.dart';
 import 'screens/auth/entry_screen.dart';
 import 'screens/home/dashboard_screen.dart';
@@ -20,14 +19,12 @@ class AnFitMobileApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
-
     return MaterialApp(
       title: 'AnFit Mobile',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AnFitTheme.darkTheme,
-      themeMode: themeMode,
+      themeMode: ThemeMode.light,
       // Localization cho DatePicker và các widget Material hiển thị tiếng Việt
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import '../../core/theme/theme_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/service_providers.dart';
 import '../../services/api_client.dart';
@@ -62,7 +61,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -88,15 +87,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: cs.onSurface),
                           style: IconButton.styleFrom(
                             backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          onPressed: () => ref.read(themeModeProvider.notifier).toggleTheme(),
-                          icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 20),
-                          style: IconButton.styleFrom(
-                            backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-                            foregroundColor: cs.onSurface,
                           ),
                         ),
                       ]),

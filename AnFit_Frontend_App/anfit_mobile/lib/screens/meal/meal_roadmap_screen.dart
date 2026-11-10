@@ -47,6 +47,27 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
 
   String get _dateParam => _selectedDate.toIso8601String().substring(0, 10);
 
+  bool get _isToday {
+    final now = DateTime.now();
+    return _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
+  }
+
+  bool get _isFuture {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selected = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    return selected.isAfter(today);
+  }
+
+  void _showLockedDayToast() {
+    final msg = _isFuture
+        ? 'Hãy kiên nhẫn nhé! Chỉ có thể đánh dấu hoàn thành khi tới đúng ngày ${_formatDisplayDate(_selectedDate)}.'
+        : 'Không thể thay đổi trạng thái bữa ăn của ngày đã qua.';
+    AnFitToast.show(context, msg, isError: true);
+  }
+
   String _formatDisplayDate(DateTime d) {
     final now = DateTime.now();
     final isToday = d.year == now.year && d.month == now.month && d.day == now.day;
@@ -118,6 +139,11 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
 
   // 5. Đánh dấu đã ăn / chưa ăn (Track từng món)
   Future<void> _toggleEaten(Map<String, dynamic> item) async {
+    if (!_isToday) {
+      _showLockedDayToast();
+      return;
+    }
+
     final detailId = item['id'] as int? ?? 0;
     final currentStatus = (item['isTracked'] as bool?) ?? (item['isEaten'] as bool?) ?? false;
     setState(() {
@@ -141,6 +167,11 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
 
   // 5b. Hoàn thành (hoặc bỏ hoàn thành) cả bữa ăn chỉ với 1 nút bấm
   Future<void> _completeMealGroup(List<Map<String, dynamic>> items, bool currentlyCompleted) async {
+    if (!_isToday) {
+      _showLockedDayToast();
+      return;
+    }
+
     final targetState = !currentlyCompleted;
     final toToggle = items.where((item) {
       final status = (item['isTracked'] as bool?) ?? (item['isEaten'] as bool?) ?? false;
@@ -362,6 +393,40 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
           ),
           const SizedBox(height: 12),
 
+          // ── THÔNG BÁO KHI XEM NGÀY KHÁC HÔM NAY ──
+          if (!_isToday)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: (_isFuture ? Colors.blue : Colors.orange).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: (_isFuture ? Colors.blue : Colors.orange).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _isFuture ? Icons.schedule_rounded : Icons.lock_outline_rounded,
+                    size: 18,
+                    color: _isFuture ? Colors.blue : Colors.orange,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _isFuture
+                          ? 'Thực đơn ngày tương lai — Chỉ có thể tick hoàn thành khi tới đúng ngày này.'
+                          : 'Ngày đã qua — Chỉ xem lại lịch sử thực đơn, không thể chỉnh sửa.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: _isFuture ? Colors.blue[800] : Colors.orange[800],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // ── NỘI DUNG CHÍNH (LOADING / ERROR / EMPTY / DATA) ──
           if (_loading)
             const Padding(
@@ -541,17 +606,21 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
-                              color: isCompleted
-                                  ? Colors.green
-                                  : cs.primary.withValues(alpha: 0.12),
+                              color: !_isToday
+                                  ? (isCompleted ? Colors.green.withValues(alpha: 0.55) : cs.outline.withValues(alpha: 0.12))
+                                  : (isCompleted ? Colors.green : cs.primary.withValues(alpha: 0.12)),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              isCompleted ? '✓ Đã xong bữa' : 'Hoàn thành bữa',
+                              !_isToday
+                                  ? (isCompleted ? '✓ Đã ăn' : (_isFuture ? '🔒 Chưa tới ngày' : '🔒 Đã khóa'))
+                                  : (isCompleted ? '✓ Đã xong bữa' : 'Hoàn thành bữa'),
                               style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.bold,
-                                color: isCompleted ? Colors.white : cs.primary,
+                                color: !_isToday
+                                    ? (isCompleted ? Colors.white : cs.onSurfaceVariant)
+                                    : (isCompleted ? Colors.white : cs.primary),
                               ),
                             ),
                           ),
@@ -607,10 +676,13 @@ class _MealRoadmapScreenState extends ConsumerState<MealRoadmapScreen> {
                             ),
                           );
                         },
-                        leading: Checkbox(
-                          value: isEaten,
-                          onChanged: (_) => _toggleEaten(item),
-                          activeColor: Colors.green,
+                        leading: Opacity(
+                          opacity: _isToday ? 1.0 : 0.45,
+                          child: Checkbox(
+                            value: isEaten,
+                            onChanged: (_) => _toggleEaten(item),
+                            activeColor: _isToday ? Colors.green : Colors.grey,
+                          ),
                         ),
                         title: Text(
                           name,

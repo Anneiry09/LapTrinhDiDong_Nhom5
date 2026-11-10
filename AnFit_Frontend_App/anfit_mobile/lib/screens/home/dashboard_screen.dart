@@ -5,7 +5,6 @@ import 'package:dio/dio.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/theme_provider.dart';
 import '../../providers/service_providers.dart';
 import '../../services/api_client.dart';
 import '../workout/workout_plan_screen.dart';
@@ -319,16 +318,6 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                         ],
                       ),
                     ),
-                    Consumer(
-                      builder: (ctx, watchRef, _) => IconButton(
-                        tooltip: isDark ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối',
-                        onPressed: () => watchRef.read(themeModeProvider.notifier).toggleTheme(),
-                        icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 22),
-                        style: IconButton.styleFrom(
-                          backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -365,10 +354,10 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                   subtitle: mealDetails.isNotEmpty
                       ? (eatenItems.isNotEmpty
                           ? 'Đã ăn ${eatenItems.length}/${mealDetails.length} món • $eatenCal kcal'
-                          : '${mealDetails.length} bữa ăn được gợi ý cho hôm nay')
+                          : '${mealDetails.length} bữa ăn được gợi ý hôm nay')
                       : 'Xem lộ trình thực đơn 30 ngày chuẩn calo',
                   badge: eatenItems.length == mealDetails.length && mealDetails.isNotEmpty
-                      ? '✓ Đã hoàn thành'
+                      ? '✓ Đã xong'
                       : '$eatenCal / ${plannedCal > 0 ? plannedCal : tdee} kcal',
                   onTap: () => widget.onNavigateTab(1), // Chuyển sang Tab Dinh dưỡng
                 ),
@@ -383,7 +372,9 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                   subtitle: todayWorkout.isNotEmpty
                       ? (todayWorkout['planName'] ?? 'Lộ trình rèn luyện hôm nay')
                       : 'Khám phá danh sách bài tập theo nhóm cơ',
-                  badge: 'Chi tiết →',
+                  badge: todayWorkout.isNotEmpty && todayWorkout['status'] == 2
+                      ? '✓ Đã xong'
+                      : 'Chi tiết →',
                   onTap: () => widget.onNavigateTab(2), // Chuyển sang Tab Tập luyện
                 ),
                 const SizedBox(height: 20),
@@ -418,6 +409,8 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
     }
 
     final primary = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
+    final calProgress = tdee > 0 ? (consumedCal / tdee).clamp(0.0, 1.0) : 0.0;
+    final calPercent = (calProgress * 100).round();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -438,8 +431,9 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Mục tiêu
+          // Hàng mục tiêu & Phần trăm đạt được
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -459,27 +453,70 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    consumedCal > 0
-                        ? 'Đã nạp: $consumedCal / $tdee kcal'
-                        : 'Mục tiêu: $tdee kcal',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkTextSub : AppColors.lightTextSub,
-                    ),
-                  ),
+              Text(
+                'Đạt $calPercent% mục tiêu',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: calPercent >= 100 ? AppColors.success : (isDark ? AppColors.darkTextSub : AppColors.lightTextSub),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
+
+          // Ô hiển thị Calo đã nạp / Mục tiêu rõ ràng (không bị dấu ...)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.local_fire_department_rounded, size: 16, color: Colors.orange),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Calo đã nạp hôm nay',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? AppColors.darkText : AppColors.lightText,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '$consumedCal / $tdee kcal',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: calPercent >= 100 ? AppColors.success : primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: calProgress,
+                    minHeight: 7,
+                    backgroundColor: Colors.black.withValues(alpha: 0.08),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      calPercent >= 100 ? AppColors.success : primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // 3 Chỉ số thể trạng cơ bản
           Row(
@@ -553,6 +590,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
           ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               width: 44,
@@ -568,41 +606,47 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14.5,
-                      color: isDark ? AppColors.darkText : AppColors.lightText,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14.5,
+                            color: isDark ? AppColors.darkText : AppColors.lightText,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (isDark ? AppColors.darkPrimary : AppColors.lightPrimary).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          badge,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 5),
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.5,
                       color: isDark ? AppColors.darkTextSub : AppColors.lightTextSub,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: (isDark ? AppColors.darkPrimary : AppColors.lightPrimary).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                badge,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
-                ),
               ),
             ),
           ],

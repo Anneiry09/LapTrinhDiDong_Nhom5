@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/theme/theme_provider.dart';
 import '../../core/theme/app_colors.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
@@ -11,8 +10,7 @@ class EntryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
-    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: Stack(
@@ -22,19 +20,6 @@ class EntryScreen extends ConsumerWidget {
             child: isDark
                 ? _darkBackground()
                 : _lightBackground(),
-          ),
-
-          // ── THEME TOGGLE ──
-          Positioned(
-            top: 56, right: 20,
-            child: IconButton(
-              onPressed: () => ref.read(themeModeProvider.notifier).toggleTheme(),
-              icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 22),
-              style: IconButton.styleFrom(
-                backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-                foregroundColor: cs.onSurface,
-              ),
-            ),
           ),
 
           // ── MAIN CONTENT ──
